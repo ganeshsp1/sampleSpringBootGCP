@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -207,6 +208,44 @@ public class FirebaseUtil {
 			}
 		});
 
+		executor.submit(() -> {
+			List<String> urls;
+			try {
+				urls = getAllWebhookData();
+				for( String urlPath: urls) {
+
+					new Thread(new Runnable() {
+
+						@Override
+						public void run() {
+							try {
+								int responsecode = 404;					
+								URL url = new URL(urlPath);
+								HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+								conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.95 Safari/537.11");
+								conn.setRequestMethod("POST");
+								conn.setRequestProperty("Accept", "application/json");
+								conn.setDoOutput(true);
+								try(OutputStream os = conn.getOutputStream()) {
+								    byte[] input = getDataString(allData).getBytes("utf-8");
+								    os.write(input, 0, input.length);			
+								}
+								conn.connect();
+								responsecode = conn.getResponseCode();	
+								
+							} catch (Exception e1) {
+								e1.printStackTrace();
+							}
+						}
+					}).start();
+
+
+				}
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
+		});
+
 		return "Successfully started sending update";
 
 	}
@@ -288,9 +327,9 @@ public class FirebaseUtil {
 
 		CoronasafelifeFirestore cryptoFirestore = new CoronasafelifeFirestore(System.getenv("PROJECT_ID"));
 		Object oldsha = cryptoFirestore.getLastCheckedCommit();
-		if(oldsha!=null && currentsha.equals(oldsha)) {
-			return null;
-		}
+//		if(oldsha!=null && currentsha.equals(oldsha)) {
+//			return null;
+//		}
 		cryptoFirestore.addLastCheckedCommit(currentsha);
 		cryptoFirestore.close();
 
@@ -361,9 +400,9 @@ public class FirebaseUtil {
 			return p -> {
 				return queries.stream().filter((query)-> query.isActive()).anyMatch(
 						(query)-> 
-						p.getDistrict().equals(query.getDistrict())
-						&& p.getState().equals(query.getState())
-						&& query.getResource().equals(p.getCategory()));
+						p.getDistrict().trim().equalsIgnoreCase(query.getDistrict().trim())
+						&& p.getState().trim().equalsIgnoreCase(query.getState().trim())
+						&& query.getResource().trim().equalsIgnoreCase(p.getCategory().trim()));
 			};
 		}
 
@@ -391,5 +430,19 @@ public class FirebaseUtil {
 		List<ResourceData> comparedDataList = new ArrayList<ResourceData>(apiData.getData());
 		comparedDataList.removeAll(oldApiData.getData());
 		return comparedDataList;
+	}
+
+	public static String addWebhookData(String url) throws Exception {
+		CoronasafelifeFirestore cryptoFirestore = new CoronasafelifeFirestore(System.getenv("PROJECT_ID"));
+		cryptoFirestore.addWebhookData(url);
+		cryptoFirestore.close();
+		return "Webhook added for "+url;
+	}
+
+	public static List<String> getAllWebhookData() throws Exception {
+		CoronasafelifeFirestore cryptoFirestore = new CoronasafelifeFirestore(System.getenv("PROJECT_ID"));
+		List<String> webhooks = cryptoFirestore.getAllWebhookData();
+		cryptoFirestore.close();
+		return webhooks;
 	}
 }

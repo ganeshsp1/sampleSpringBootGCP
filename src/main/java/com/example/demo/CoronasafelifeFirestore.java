@@ -203,4 +203,23 @@ public class CoronasafelifeFirestore {
 		docData.put("etag", eTag);
 		ApiFuture<WriteResult> result = docRef.set(docData,SetOptions.merge());
 	}
+
+	public void addWebhookData(String url) {
+		DocumentReference docRef = db.collection("webhooks").document();
+		Map<String, Object> docData = new HashMap<>();
+		docData.put("url", url);
+		docRef.set(docData,SetOptions.merge());
+	}
+	
+	public List<String> getAllWebhookData() throws InterruptedException, ExecutionException  {
+		ApiFuture<QuerySnapshot> query = db.collection("webhooks").get();
+		QuerySnapshot querySnapshot = query.get();
+		List<String> webhookUrlList = new ArrayList<String>();
+		
+		List<QueryDocumentSnapshot> documents = querySnapshot.getDocuments();
+		for (QueryDocumentSnapshot document : documents) {
+			webhookUrlList.add(document.getString("url"));
+		}
+		return webhookUrlList;
+	}
 }
