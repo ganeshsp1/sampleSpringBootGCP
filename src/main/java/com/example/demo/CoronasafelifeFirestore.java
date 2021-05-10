@@ -55,10 +55,10 @@ public class CoronasafelifeFirestore {
 	public CoronasafelifeFirestore() {
 		// [START fs_initialize]
 		// [START firestore_setup_client_create]
-		Firestore db = FirestoreOptions.getDefaultInstance().getService();
+		//Firestore db = FirestoreOptions.getDefaultInstance().getService();
 		// [END firestore_setup_client_create]
 		// [END fs_initialize]
-		this.db = db;
+		//this.db = db;
 	}
 
 	public CoronasafelifeFirestore(String projectId) throws Exception {	
