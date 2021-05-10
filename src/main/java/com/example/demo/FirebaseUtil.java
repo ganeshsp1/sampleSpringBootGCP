@@ -12,6 +12,8 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -55,7 +57,7 @@ public class FirebaseUtil {
 			e.printStackTrace();
 		}
 	}
-	
+
 	/**
 	 * 
 	 * @param resource
@@ -174,28 +176,38 @@ public class FirebaseUtil {
 		if(allData==null||allData.isEmpty()) {
 			return "No New Data";
 		}
-		List<User> users = getUsers();
-		List<User> activeUsers = users.stream().filter((user)->{return user.isActive();}).collect(Collectors. < User > toList());
-		StringBuilder stringBuilder = new StringBuilder();
-		activeUsers.forEach((user) -> {
 
-			if(user.getQueries()!=null) {
-				List<ResourceData> finalData = allData.stream()
-						.filter(QueryPredicates.isMatchingQuery(user.getQueries())).collect(Collectors. < ResourceData > toList());
-				if(finalData!=null && !finalData.isEmpty()) {
-					try {
-						sendMessageToUser(user,finalData);
-					} catch (FirebaseMessagingException e) {
-						e.printStackTrace();
-					} catch (JsonProcessingException e) {
-						e.printStackTrace();
+		ExecutorService executor = Executors.newSingleThreadExecutor();
+		executor.submit(() -> {
+			List<User> users;
+			try {
+				users = getUsers();
+				List<User> activeUsers = users.stream().filter((user)->{return user.isActive();}).collect(Collectors. < User > toList());
+				StringBuilder stringBuilder = new StringBuilder();
+				activeUsers.forEach((user) -> {
+
+					if(user.getQueries()!=null) {
+						List<ResourceData> finalData = allData.stream()
+								.filter(QueryPredicates.isMatchingQuery(user.getQueries())).collect(Collectors. < ResourceData > toList());
+						if(finalData!=null && !finalData.isEmpty()) {
+							try {
+								sendMessageToUser(user,finalData);
+							} catch (FirebaseMessagingException e) {
+								e.printStackTrace();
+							} catch (JsonProcessingException e) {
+								e.printStackTrace();
+							}
+							stringBuilder.append("For User : "+user.getToken()+" resources found : "+finalData.stream().map(ResourceData::getDistrict).collect(Collectors.toList()) );
+							System.out.println("For User : "+user.getToken()+" resources found : "+finalData.stream().map(ResourceData::getDistrict).collect(Collectors.toList()) );
+						}
 					}
-					stringBuilder.append("For User : "+user.getToken()+" resources found : "+finalData.stream().map(ResourceData::getDistrict).collect(Collectors.toList()) );
-					System.out.println("For User : "+user.getToken()+" resources found : "+finalData.stream().map(ResourceData::getDistrict).collect(Collectors.toList()) );
-				}
+				});	
+			} catch (Exception e1) {
+				e1.printStackTrace();
 			}
-		});		
-		return stringBuilder.toString().isEmpty()?" New Data found, but No Alerts Send":stringBuilder.toString();
+		});
+
+		return "Successfully started sending update";
 
 	}
 
@@ -233,23 +245,23 @@ public class FirebaseUtil {
 
 	}
 
-	 public static String toCamelCase(final String init) {
-    if (init == null)
-        return null;
+	public static String toCamelCase(final String init) {
+		if (init == null)
+			return null;
 
-    final StringBuilder ret = new StringBuilder(init.length());
+		final StringBuilder ret = new StringBuilder(init.length());
 
-    for (final String word : init.split(" ")) {
-        if (!word.isEmpty()) {
-            ret.append(Character.toUpperCase(word.charAt(0)));
-            ret.append(word.substring(1).toLowerCase());
-        }
-        if (!(ret.length() == init.length()))
-            ret.append(" ");
-    }
+		for (final String word : init.split(" ")) {
+			if (!word.isEmpty()) {
+				ret.append(Character.toUpperCase(word.charAt(0)));
+				ret.append(word.substring(1).toLowerCase());
+			}
+			if (!(ret.length() == init.length()))
+				ret.append(" ");
+		}
 
-    return ret.toString();
-}
+		return ret.toString();
+	}
 	public static void testSendMessage(String registrationToken) throws FirebaseMessagingException
 	{
 		AndroidConfig config = AndroidConfig.builder()
